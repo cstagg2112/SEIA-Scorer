@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEIA M&A Target Scorer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f8f8f7;--bg3:#f1f0ed;
+  --text:#1a1a18;--text2:#6b6a66;--text3:#9e9d99;
+  --border:#e5e4e0;--border2:#d0cfc9;
+  --green:#1D9E75;--green-bg:#E1F5EE;--green-text:#085041;
+  --blue:#378ADD;--blue-bg:#E6F1FB;--blue-text:#0C447C;
+  --amber:#BA7517;--amber-bg:#FAEEDA;--amber-text:#633806;
+  --red:#D85A30;--red-bg:#FAECE7;--red-text:#712B13;
+  --gray-bg:#F1EFE8;--gray-text:#444441;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px;color:var(--text);background:var(--bg);line-height:1.5}
+a{color:inherit;text-decoration:none}
+
+.layout{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:200px;flex-shrink:0;border-right:0.5px solid var(--border);padding:20px 0;display:flex;flex-direction:column;background:var(--bg)}
+.sidebar-logo{padding:0 16px 20px;border-bottom:0.5px solid var(--border);margin-bottom:12px}
+.sidebar-logo h1{font-size:13px;font-weight:600;letter-spacing:-0.2px}
+.sidebar-logo p{font-size:11px;color:var(--text3);margin-top:2px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 16px;font-size:12px;cursor:pointer;color:var(--text2);border-radius:0;transition:all .1s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--bg2);color:var(--text)}
+.nav-item.active{background:var(--bg2);color:var(--text);font-weight:500}
+.nav-icon{font-size:14px;width:16px;text-align:center}
+.sidebar-footer{margin-top:auto;padding:12px 16px;border-top:0.5px solid var(--border)}
+.sidebar-footer p{font-size:10px;color:var(--text3)}
+
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.topbar{padding:12px 20px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar-title{font-size:13px;font-weight:500}
+.topbar-actions{display:flex;gap:6px}
+.content{flex:1;overflow-y:auto;padding:20px}
+
+.panel{display:none}.panel.active{display:block}
+
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+.stat{background:var(--bg2);border-radius:var(--radius);padding:12px 14px}
+.stat-lbl{font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px}
+.stat-val{font-size:22px;font-weight:600;line-height:1}
+
+.filter-row{display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+select,input[type="text"],input[type="password"]{font-size:12px;padding:5px 8px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);height:28px;font-family:inherit}
+select:focus,input:focus{outline:none;border-color:#999}
+.search-input{width:180px}
+.spacer{flex:1}
+
+.table-wrap{border:0.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead{background:var(--bg2)}
+th{padding:8px 10px;font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:0.4px;text-align:left;border-bottom:0.5px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:0.5px solid var(--border);cursor:pointer;transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg2)}
+td{padding:9px 10px;vertical-align:middle}
+.firm-name{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+.firm-crd{font-size:10px;color:var(--text3);margin-top:1px}
+
+.score-wrap{display:flex;align-items:center;gap:6px}
+.score-bar{width:46px;height:4px;border-radius:2px;background:var(--bg3);overflow:hidden;flex-shrink:0}
+.score-fill{height:100%;border-radius:2px}
+.score-num{font-size:13px;font-weight:600}
+
+.pill{font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;display:inline-block;white-space:nowrap}
+.p-a{background:var(--green-bg);color:var(--green-text)}
+.p-b{background:var(--blue-bg);color:var(--blue-text)}
+.p-c{background:var(--amber-bg);color:var(--amber-text)}
+.p-d{background:var(--gray-bg);color:var(--gray-text)}
+.p-hi{background:var(--green-bg);color:var(--green-text)}
+.p-mid{background:var(--blue-bg);color:var(--blue-text)}
+.p-lo{background:var(--gray-bg);color:var(--gray-text)}
+.p-dem{background:var(--red-bg);color:var(--red-text)}
+.p-uhnw{background:var(--green-bg);color:var(--green-text)}
+.p-hnw{background:var(--blue-bg);color:var(--blue-text)}
+.p-uma{background:var(--amber-bg);color:var(--amber-text)}
+.p-mass{background:var(--gray-bg);color:var(--gray-text)}
+.p-retail{background:var(--red-bg);color:var(--red-text)}
+
+.chip{font-size:10px;padding:1px 5px;border-radius:4px;display:inline-block;margin-right:2px;margin-bottom:1px}
+.chip-red{background:var(--red-bg);color:var(--red-text)}
+.chip-amber{background:var(--amber-bg);color:var(--amber-text)}
+
+.expand-row{background:var(--bg2)}
+.expand-inner{padding:14px 12px;border-top:0.5px solid var(--border)}
+.dim-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;margin-bottom:12px}
+.dim-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);padding:9px 11px}
+.dim-card.flagged{border-color:#F5C4B3}
+.dim-lbl{font-size:10px;color:var(--text3);margin-bottom:3px}
+.dim-val{font-size:16px;font-weight:600}
+.dim-pts{font-size:10px;color:var(--text3);margin-top:1px}
+.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.detail-item .di-lbl{font-size:10px;color:var(--text3);margin-bottom:2px}
+.detail-item .di-val{font-size:12px;font-weight:500}
+.expand-footer{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:0.5px solid var(--border)}
+.push-status-text{font-size:11px;color:var(--text3)}
+.push-status-text.done{color:var(--green)}
+
+.btn{font-size:12px;padding:5px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);cursor:pointer;transition:background .1s;font-family:inherit}
+.btn:hover{background:var(--bg2)}
+.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-primary:hover{opacity:0.85}
+.btn-sm{font-size:11px;padding:4px 10px}
+.btn-green{background:var(--green-bg);color:var(--green-text);border-color:#9FE1CB}
+.btn-green:hover{opacity:0.9}
+
+.upload-zone{border:1.5px dashed var(--border2);border-radius:var(--radius-lg);padding:2.5rem;text-align:center;cursor:pointer;transition:all .15s;background:var(--bg2);margin-bottom:16px}
+.upload-zone:hover{border-color:#999;background:var(--bg)}
+.upload-zone h3{font-size:14px;font-weight:500;margin-bottom:5px}
+.upload-zone p{font-size:12px;color:var(--text2)}
+input[type="file"]{display:none}
+
+.prog-wrap{background:var(--bg2);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px;display:none}
+.prog-header{display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px}
+.prog-label{font-weight:500}
+.prog-track{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:var(--green);border-radius:2px;transition:width .3s ease}
+.prog-msg{font-size:11px;color:var(--text3);margin-top:5px}
+
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:500;color:var(--text2);margin-bottom:5px;display:block}
+.form-input{width:100%;font-size:12px;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit}
+.form-hint{font-size:11px;color:var(--text3);margin-top:4px}
+
+.settings-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.settings-card h3{font-size:12px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:0.5px solid var(--border)}
+
+.batch-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.batch-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg2);border-radius:var(--radius);font-size:12px}
+.batch-name{font-weight:500}
+.batch-meta{font-size:11px;color:var(--text3)}
+
+.notice{font-size:11px;color:var(--text2);background:var(--bg2);border-radius:var(--radius);padding:8px 12px;margin-top:10px;line-height:1.6;border-left:2px solid var(--border2)}
+
+.pagination{display:flex;align-items:center;gap:8px;margin-top:14px;justify-content:flex-end;font-size:12px}
+.page-info{color:var(--text3)}
+
+.empty{text-align:center;padding:3rem;color:var(--text3)}
+.empty-icon{font-size:32px;margin-bottom:10px;opacity:0.3}
+.empty-msg{font-size:13px}
+
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:var(--radius);font-size:12px;z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <h1>SEIA M&A Scorer</h1>
+      <p>RIA acquisition targeting</p>
+    </div>
+    <button class="nav-item active" onclick="switchPanel('results')" id="nav-results">
+      <span class="nav-icon">&#9636;</span> Results
+    </button>
+    <button class="nav-item" onclick="switchPanel('upload')" id="nav-upload">
+      <span class="nav-icon">&#8679;</span> Upload
+    </button>
+    <button class="nav-item" onclick="switchPanel('settings')" id="nav-settings">
+      <span class="nav-icon">&#9881;</span> Settings
+    </button>
+    <div class="sidebar-footer">
+      <p id="db-stats">Loading...</p>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="topbar-title">All scored firms</span>
+      <div class="topbar-actions">
+        <button class="btn btn-sm" onclick="exportCSV()">Export CSV</button>
+        <button class="btn btn-sm btn-primary" onclick="pushAllModal()">Push to Close</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <div id="panel-results" class="panel active">
+        <div class="stats-row">
+          <div class="stat"><div class="stat-lbl">Total firms</div><div class="stat-val" id="s-total">—</div></div>
+          <div class="stat"><div class="stat-lbl">Tier A</div><div class="stat-val" id="s-a" style="color:var(--green)">—</div></div>
+          <div class="stat"><div class="stat-lbl">Avg score</div><div class="stat-val" id="s-avg">—</div></div>
+          <div class="stat"><div class="stat-lbl">Demoted</div><div class="stat-val" id="s-dem" style="color:var(--red)">—</div></div>
+          <div class="stat"><div class="stat-lbl">Pushed to Close</div><div class="stat-val" id="s-pushed" style="color:var(--blue)">—</div></div>
+        </div>
+
+        <div class="filter-row">
+          <input type="text" class="search-input" placeholder="Search firm name or CRD..." oninput="debounceLoad()" id="f-search">
+          <select onchange="loadFirms()" id="f-tier"><option value="">All tiers</option><option value="A">Tier A</option><option value="B">Tier B</option><option value="C">Tier C</option><option value="D">Tier D</option></select>
+          <select onchange="loadFirms()" id="f-svc"><option value="">All services</option><option value="high">High fit</option><option value="mid">Mid fit</option><option value="low">Low fit</option><option value="demoted">Demoted</option></select>
+          <select onchange="loadFirms()" id="f-cq"><option value="">All client types</option><option value="uhnw">UHNW</option><option value="hnw">HNW</option><option value="uma">Upper mass affluent</option><option value="mass">Mass affluent</option><option value="retail">Retail</option></select>
+          <select onchange="loadFirms()" id="f-type"><option value="">All firm types</option><option value="independent">Independent RIA</option><option value="other">Non-independent</option></select>
+          <select onchange="loadFirms()" id="f-geo"><option value="">All geographies</option><option value="1">Tier 1 — whitespace</option><option value="2">Tier 2 — SEIA present</option><option value="3">Tier 3 — secondary</option></select>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Firm</th><th>Location</th><th>AUM</th><th>Services</th>
+                <th>Client quality</th><th>Score</th><th>Tier</th><th>Flags</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="firms-tbody">
+              <tr><td colspan="9"><div class="empty"><div class="empty-icon">&#9636;</div><div class="empty-msg">No firms loaded — upload a FINTRX export to begin</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <span class="page-info" id="page-info"></span>
+          <button class="btn btn-sm" id="btn-prev" onclick="prevPage()" disabled>&#8592; Prev</button>
+          <button class="btn btn-sm" id="btn-next" onclick="nextPage()">Next &#8594;</button>
+        </div>
+      </div>
+
+      <div id="panel-upload" class="panel">
+        <div class="upload-zone" onclick="document.getElementById('file-input').click()">
+          <div style="font-size:28px;margin-bottom:10px">&#8679;</div>
+          <h3>Drop FINTRX export here</h3>
+          <p>Accepts .csv — new uploads add to existing database, updating any matching CRDs</p>
+        </div>
+        <input type="file" id="file-input" accept=".csv,.txt" onchange="handleUpload(event)">
+
+        <div class="prog-wrap" id="prog-wrap">
+          <div class="prog-header">
+            <span class="prog-label" id="prog-label">Processing...</span>
+            <span id="prog-count" style="color:var(--text3);font-size:11px"></span>
+          </div>
+          <div class="prog-track"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
+          <div class="prog-msg" id="prog-msg"></div>
+        </div>
+
+        <div class="notice">
+          Required columns: Firm CRD · Firm Name · Firm Classification · Total AUM · Total Accounts · Employees · Insurance Agents · Broker Dealer Reps · Main Office City · Main Office State · Fee Structure · YoY/3yr/5yr AUM Change · Retail Custodian · Advisory Activities<br>
+          New uploads are added to the database. Firms with matching CRDs are rescored and updated. The database persists between sessions.
+        </div>
+
+        <div style="margin-top:20px">
+          <div class="settings-card">
+            <h3>Upload history</h3>
+            <div class="batch-list" id="batch-list">
+              <div style="font-size:12px;color:var(--text3)">No uploads yet</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="panel-settings" class="panel">
+        <div class="settings-card">
+          <h3>Close CRM integration</h3>
+          <div class="form-group">
+            <label class="form-label">API Key</label>
+            <input type="password" class="form-input" id="close-api-key" placeholder="api_xxxxxxxxxxxxxxxx">
+            <div class="form-hint">Stored locally in the database. Used to find leads by CRD and push scores.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Required custom fields on Close lead records</label>
+            <div class="notice" style="margin-top:0">
+              Create these custom fields in Close before pushing:<br>
+              <strong>cf_CRD</strong> (text) — used to match firms<br>
+              <strong>cf_SEIA_MA_Score</strong> (number) — composite score<br>
+              <strong>cf_SEIA_Tier</strong> (text) — A/B/C/D<br>
+              <strong>cf_Services_Fit</strong> (text) — high/mid/low/demoted<br>
+              <strong>cf_Client_Tier</strong> (text) — UHNW/HNW/etc<br>
+              <strong>cf_Avg_Account_Size</strong> (text)<br>
+              <strong>cf_AUM_M</strong> (number)
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="saveSettings()">Save settings</button>
+          <span id="settings-saved" style="font-size:11px;color:var(--green);margin-left:10px;display:none">Saved</span>
+        </div>
+
+        <div class="settings-card">
+          <h3>Database management</h3>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:10px">The SQLite database persists all scored firms between sessions at <code>seia_scorer.db</code> in the app directory.</p>
+          <button class="btn" onclick="clearAll()" style="color:var(--red-text);border-color:#F5C4B3">Clear all firm data</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PAGE_SIZE = 100;
+let currentPage = 0;
+let totalFirms = 0;
+let expandedId = null;
+let debounceTimer = null;
+
+async function api(path, opts={}) {
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+function debounceLoad() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(loadFirms, 300);
+}
+
+function switchPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  const titles = {results:'All scored firms', upload:'Upload FINTRX data', settings:'Settings'};
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+  if (name === 'results') loadFirms();
+  if (name === 'upload') loadBatches();
+  if (name === 'settings') loadSettings();
+}
+
+async function loadStats() {
+  const s = await api('/api/stats');
+  document.getElementById('s-total').textContent = s.total.toLocaleString();
+  document.getElementById('s-a').textContent = s.tier_a.toLocaleString();
+  document.getElementById('s-avg').textContent = s.avg_score || '—';
+  document.getElementById('s-dem').textContent = s.demoted.toLocaleString();
+  document.getElementById('s-pushed').textContent = s.pushed.toLocaleString();
+  document.getElementById('db-stats').textContent = `${s.total.toLocaleString()} firms in DB`;
+}
+
+async function loadFirms() {
+  const params = new URLSearchParams({
+    limit: PAGE_SIZE,
+    offset: currentPage * PAGE_SIZE,
+    sort_by: 'composite',
+    sort_dir: 'desc'
+  });
+  const search = document.getElementById('f-search').value;
+  const tier = document.getElementById('f-tier').value;
+  const svc = document.getElementById('f-svc').value;
+  const cq = document.getElementById('f-cq').value;
+  const type = document.getElementById('f-type').value;
+  const geo = document.getElementById('f-geo').value;
+  if (search) params.set('search', search);
+  if (tier) params.set('tier', tier);
+  if (svc) params.set('services', svc);
+  if (cq) params.set('client_type', cq);
+  if (type) params.set('firm_type', type);
+  if (geo) params.set('geo_tier', geo);
+
+  const data = await api('/api/firms?' + params);
+  totalFirms = data.total;
+  renderFirms(data.firms);
+  updatePagination();
+  loadStats();
+}
+
+function sColor(s) {
+  return s >= 78 ? '#1D9E75' : s >= 63 ? '#378ADD' : s >= 48 ? '#BA7517' : '#888780';
+}
+function tierClass(t) { return {A:'p-a',B:'p-b',C:'p-c',D:'p-d'}[t] || 'p-d'; }
+function svcClass(l) { return {high:'p-hi',mid:'p-mid',low:'p-lo',demoted:'p-dem'}[l] || 'p-lo'; }
+function svcLabel(l) { return {high:'High fit',mid:'Mid fit',low:'Low fit',demoted:'Demoted'}[l] || l; }
+function cqClass(t) { return {uhnw:'p-uhnw',hnw:'p-hnw',uma:'p-uma',mass:'p-mass',retail:'p-retail'}[t] || 'p-mass'; }
+
+function renderFirms(firms) {
+  const tbody = document.getElementById('firms-tbody');
+  if (!firms.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty"><div class="empty-icon">&#9636;</div><div class="empty-msg">No firms match current filters</div></div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = firms.map(f => {
+    const color = sColor(f.composite);
+    const aumLbl = f.aum_m >= 1000 ? '$' + (f.aum_m/1000).toFixed(1) + 'B' : '$' + Math.round(f.aum_m) + 'M';
+    const flags = (f.flags || []).map(fl => {
+      const t = typeof fl === 'string' ? fl : fl.t;
+      const isDem = typeof fl === 'object' && fl.dem;
+      return `<span class="chip ${isDem ? 'chip-red' : 'chip-amber'}">${t}</span>`;
+    }).join('') || '<span style="font-size:10px;color:var(--text3)">—</span>';
+    const isPushed = f.push_status === 'pushed';
+    const isExpanded = expandedId === f.id;
+
+    return `
+      <tr onclick="toggleExpand(${f.id}, ${JSON.stringify(f).replace(/"/g,'&quot;')})">
+        <td><div class="firm-name">${f.name}</div><div class="firm-crd">CRD ${f.crd}</div></td>
+        <td style="color:var(--text2);font-size:11px">${f.city}, ${f.state}</td>
+        <td style="font-weight:500">${aumLbl}</td>
+        <td><span class="pill ${svcClass(f.services_label)}">${svcLabel(f.services_label)}</span></td>
+        <td>
+          <span class="pill ${cqClass(f.client_tier)}">${f.client_tier_label || '—'}</span>
+          ${f.avg_acct ? `<div style="font-size:10px;color:var(--text3);margin-top:2px">${f.avg_acct} · ${(f.total_accounts||0).toLocaleString()} accts</div>` : ''}
+        </td>
+        <td>
+          <div class="score-wrap">
+            <div class="score-bar"><div class="score-fill" style="width:${f.composite}%;background:${color}"></div></div>
+            <span class="score-num" style="color:${color}">${f.composite}</span>
+          </div>
+        </td>
+        <td><span class="pill ${tierClass(f.tier)}">${f.tier}</span></td>
+        <td>${flags}</td>
+        <td><button class="btn btn-sm ${isPushed ? 'btn-green' : ''}" onclick="pushFirm(event,'${f.crd}')">${isPushed ? '✓' : 'Push'}</button></td>
+      </tr>
+      ${isExpanded ? renderExpand(f) : ''}
+    `;
+  }).join('');
+}
+
+function renderExpand(f) {
+  const dims = f.dims || {};
+  const dimDefs = [
+    {id:'services',label:'Services',pct:22},
+    {id:'client_qual',label:'Client quality',pct:15},
+    {id:'geo',label:'Geography',pct:13},
+    {id:'aum',label:'AUM fit',pct:13},
+    {id:'cagr',label:'CAGR',pct:11},
+    {id:'succession',label:'Succession',pct:8},
+    {id:'aum_adv',label:'AUM/advisor',pct:7},
+    {id:'consistency',label:'Consistency',pct:5},
+    {id:'fee',label:'Fee structure',pct:4},
+    {id:'custodian',label:'Custodian',pct:2},
+  ];
+  const isPushed = f.push_status === 'pushed';
+  return `<tr class="expand-row"><td colspan="9" style="padding:0;border-bottom:0.5px solid var(--border)">
+    <div class="expand-inner">
+      <div class="dim-grid">
+        ${dimDefs.map(d => `<div class="dim-card${d.id==='services'&&f.services_demoted?' flagged':''}">
+          <div class="dim-lbl">${d.label}</div>
+          <div class="dim-val">${dims[d.id] || 0}</div>
+          <div class="dim-pts">${d.pct}% · ${Math.round((dims[d.id]||0)*d.pct/100)} pts</div>
+        </div>`).join('')}
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="di-lbl">Avg account size</div><div class="di-val">${f.avg_acct || '—'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Total accounts</div><div class="di-val">${(f.total_accounts||0).toLocaleString()}</div></div>
+        <div class="detail-item"><div class="di-lbl">Client tier</div><div class="di-val">${f.client_tier_label || '—'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Advisors (derived)</div><div class="di-val">${f.advisor_count}</div></div>
+        <div class="detail-item"><div class="di-lbl">AUM per advisor</div><div class="di-val">$${f.advisor_count > 0 ? Math.round(f.aum_m/f.advisor_count) + 'M' : 'n/a'}</div></div>
+        <div class="detail-item"><div class="di-lbl">Geo tier</div><div class="di-val">Tier ${f.geo_tier}</div></div>
+      </div>
+      <div class="expand-footer">
+        <span class="push-status-text${isPushed?' done':''}">${isPushed ? '✓ Synced to Close CRM' + (f.push_date ? ' · ' + f.push_date.split('T')[0] : '') : 'Not yet pushed to Close'}</span>
+        <button class="btn btn-sm ${isPushed?'btn-green':''}" onclick="pushFirm(event,'${f.crd}')">${isPushed?'Re-push':'Push to Close'}</button>
+      </div>
+    </div>
+  </td></tr>`;
+}
+
+function toggleExpand(id, firm) {
+  expandedId = expandedId === id ? null : id;
+  loadFirms();
+}
+
+async function pushFirm(e, crd) {
+  e.stopPropagation();
+  toast('Pushing to Close...');
+  const result = await api(`/api/push/${crd}`, {method:'POST'});
+  if (result.success) {
+    toast('✓ Pushed to Close');
+    loadFirms();
+  } else {
+    toast('Error: ' + result.error);
+  }
+}
+
+async function pushAllModal() {
+  const tier = document.getElementById('f-tier').value;
+  const msg = tier ? `Push all Tier ${tier} firms to Close?` : 'Push all unpushed firms to Close?';
+  if (!confirm(msg)) return;
+  const result = await api('/api/push-all' + (tier ? `?tier=${tier}` : ''), {method:'POST'});
+  toast(`Queued ${result.queued} firms for Close push`);
+  setTimeout(loadFirms, 2000);
+}
+
+async function handleUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('prog-wrap').style.display = 'block';
+  document.getElementById('prog-label').textContent = 'Uploading ' + file.name + '...';
+  document.getElementById('prog-fill').style.width = '20%';
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    document.getElementById('prog-fill').style.width = '60%';
+    document.getElementById('prog-label').textContent = 'Scoring firms...';
+    const result = await fetch('/api/upload', {method:'POST', body:formData}).then(r=>r.json());
+    document.getElementById('prog-fill').style.width = '100%';
+    document.getElementById('prog-label').textContent = 'Complete';
+    document.getElementById('prog-msg').textContent = `${result.total} firms scored · ${result.inserted} new · ${result.updated} updated · ${result.errors} errors`;
+    document.getElementById('prog-count').textContent = result.total + ' firms';
+    loadBatches();
+    toast(`✓ ${result.total} firms scored`);
+  } catch (err) {
+    document.getElementById('prog-label').textContent = 'Error: ' + err.message;
+  }
+  e.target.value = '';
+}
+
+async function loadBatches() {
+  const stats = await api('/api/stats');
+  const list = document.getElementById('batch-list');
+  if (!stats.batches || !stats.batches.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--text3)">No uploads yet</div>';
+    return;
+  }
+  list.innerHTML = stats.batches.map(b => `
+    <div class="batch-item">
+      <div>
+        <div class="batch-name">${b.name}</div>
+        <div class="batch-meta">${b.firm_count.toLocaleString()} firms · ${b.created_at.split('T')[0]}</div>
+      </div>
+      <button class="btn btn-sm" onclick="clearBatch('${b.id}')" style="color:var(--red-text)">Remove</button>
+    </div>
+  `).join('');
+}
+
+async function clearBatch(id) {
+  if (!confirm('Remove this batch from the database?')) return;
+  await api(`/api/firms?batch_id=${id}`, {method:'DELETE'});
+  loadBatches();
+  loadFirms();
+  toast('Batch removed');
+}
+
+async function clearAll() {
+  if (!confirm('Clear ALL firm data from the database? This cannot be undone.')) return;
+  await api('/api/firms', {method:'DELETE'});
+  loadFirms();
+  loadBatches();
+  toast('Database cleared');
+}
+
+async function loadSettings() {
+  const s = await api('/api/settings');
+  if (s.close_api_key) {
+    document.getElementById('close-api-key').placeholder = s.close_api_key;
+  }
+}
+
+async function saveSettings() {
+  const key = document.getElementById('close-api-key').value;
+  if (!key) return;
+  await api('/api/settings', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({close_api_key: key})
+  });
+  document.getElementById('close-api-key').value = '';
+  document.getElementById('settings-saved').style.display = 'inline';
+  setTimeout(() => document.getElementById('settings-saved').style.display = 'none', 2000);
+}
+
+function exportCSV() {
+  const params = new URLSearchParams();
+  const tier = document.getElementById('f-tier').value;
+  const svc = document.getElementById('f-svc').value;
+  if (tier) params.set('tier', tier);
+  if (svc) params.set('services', svc);
+  window.location.href = '/api/export?' + params;
+}
+
+function updatePagination() {
+  const start = currentPage * PAGE_SIZE + 1;
+  const end = Math.min((currentPage + 1) * PAGE_SIZE, totalFirms);
+  document.getElementById('page-info').textContent = totalFirms > 0 ? `${start}–${end} of ${totalFirms.toLocaleString()}` : '';
+  document.getElementById('btn-prev').disabled = currentPage === 0;
+  document.getElementById('btn-next').disabled = end >= totalFirms;
+}
+
+function prevPage() { if (currentPage > 0) { currentPage--; loadFirms(); } }
+function nextPage() { if ((currentPage + 1) * PAGE_SIZE < totalFirms) { currentPage++; loadFirms(); } }
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+loadStats();
+loadFirms();
+</script>
+</body>
+</html>
