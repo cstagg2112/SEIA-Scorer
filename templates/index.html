@@ -389,6 +389,14 @@ async function loadFirms() {
   if (city) params.set('city', city);
   if (aumMin) params.set('aum_min', aumMin);
   if (aumMax) params.set('aum_max', aumMax);
+  const data = await api('/api/firms?' + params || '';
+  const city = document.getElementById('f-city')?.value || '';
+  const aumMin = document.getElementById('f-aum-min')?.value || '';
+  const aumMax = document.getElementById('f-aum-max')?.value || '';
+  if (state) params.set('state', state);
+  if (city) params.set('city', city);
+  if (aumMin) params.set('aum_min', aumMin);
+  if (aumMax) params.set('aum_max', aumMax);
 
   const data = await api('/api/firms?' + params);
   totalFirms = data.total;
