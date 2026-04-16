@@ -380,3 +380,22 @@ async def export_csv(
     )
 
 
+
+@app.get("/api/states")
+async def get_states(request: Request):
+    check_auth(request)
+    conn = get_db()
+    rows = conn.execute("SELECT DISTINCT state FROM firms WHERE state IS NOT NULL AND state != '' ORDER BY state").fetchall()
+    conn.close()
+    return {"states": [r["state"] for r in rows]}
+
+@app.get("/api/cities")
+async def get_cities(request: Request, state: Optional[str] = None):
+    check_auth(request)
+    conn = get_db()
+    if state:
+        rows = conn.execute("SELECT DISTINCT city FROM firms WHERE state=? AND city IS NOT NULL AND city != '' ORDER BY city", (state,)).fetchall()
+    else:
+        rows = conn.execute("SELECT DISTINCT city FROM firms WHERE city IS NOT NULL AND city != '' ORDER BY city").fetchall()
+    conn.close()
+    return {"cities": [r["city"] for r in rows]}
