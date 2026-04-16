@@ -318,6 +318,29 @@ function switchPanel(name) {
   if (name === 'settings') loadSettings();
 }
 
+async function loadStates() {
+  const data = await api('/api/states');
+  const sel = document.getElementById('f-state');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All states</option>' + (data.states||[]).map(s=>`<option value="${s}"${s===cur?' selected':''}>${s}</option>`).join('');
+}
+
+async function onStateChange() {
+  const state = document.getElementById('f-state').value;
+  const data = await api('/api/cities' + (state ? '?state='+encodeURIComponent(state) : ''));
+  const sel = document.getElementById('f-city');
+  sel.innerHTML = '<option value="">All cities</option>' + (data.cities||[]).map(c=>`<option value="${c}">${c}</option>`).join('');
+  loadFirms();
+}
+
+function clearAllFilters() {
+  ['f-search','f-aum-min','f-aum-max'].forEach(id=>document.getElementById(id).value='');
+  ['f-tier','f-svc','f-cq','f-type','f-geo','f-state','f-city'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-city').innerHTML='<option value="">All cities</option>';
+  currentPage=0;
+  loadFirms();
+}
+
 async function loadStats() {
   const s = await api('/api/stats');
   document.getElementById('s-total').textContent = s.total.toLocaleString();
