@@ -319,6 +319,8 @@ async def push_all_firms(background_tasks: BackgroundTasks, tier: Optional[str] 
 
 
 @app.get("/api/settings")
+
+
 @app.get("/api/states")
 async def get_states(request: Request):
     conn = get_db()
