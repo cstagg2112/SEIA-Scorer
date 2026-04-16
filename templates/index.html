@@ -213,8 +213,13 @@ input[type="file"]{display:none}
           <table>
             <thead>
               <tr>
-                <th>Firm</th><th>Location</th><th>AUM</th><th>Services</th>
-                <th>Client quality</th><th>Score</th><th>Tier</th><th>Flags</th><th></th>
+                <th onclick="sortBy("name")" style="cursor:pointer">Firm <span id="sort-name"></span></th>
+                <th onclick="sortBy("state")" style="cursor:pointer">Location <span id="sort-state"></span></th>
+                <th onclick="sortBy("aum_m")" style="cursor:pointer">AUM <span id="sort-aum_m"></span></th>
+                <th>Services</th>
+                <th>Client quality</th>
+                <th onclick="sortBy("composite")" style="cursor:pointer">Score <span id="sort-composite"></span></th>
+                <th>Tier</th><th>Flags</th><th></th>
               </tr>
             </thead>
             <tbody id="firms-tbody">
@@ -352,6 +357,23 @@ function clearAllFilters() {
   loadFirms();
 }
 
+let currentSort = 'composite';
+let currentSortDir = 'desc';
+
+function sortBy(field) {
+  if (currentSort === field) {
+    currentSortDir = currentSortDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    currentSort = field;
+    currentSortDir = field === 'name' || field === 'state' ? 'asc' : 'desc';
+  }
+  document.querySelectorAll('[id^="sort-"]').forEach(el => el.textContent = '');
+  const el = document.getElementById('sort-' + field);
+  if (el) el.textContent = currentSortDir === 'asc' ? ' ↑' : ' ↓';
+  currentPage = 0;
+  loadFirms();
+}
+
 async function loadStats() {
   const s = await api('/api/stats');
   document.getElementById('s-total').textContent = s.total.toLocaleString();
@@ -366,8 +388,8 @@ async function loadFirms() {
   const params = new URLSearchParams({
     limit: PAGE_SIZE,
     offset: currentPage * PAGE_SIZE,
-    sort_by: 'composite',
-    sort_dir: 'desc'
+    sort_by: currentSort,
+    sort_dir: currentSortDir
   });
   const search = document.getElementById('f-search').value;
   const tier = document.getElementById('f-tier').value;
