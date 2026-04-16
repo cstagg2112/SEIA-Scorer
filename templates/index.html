@@ -198,6 +198,17 @@ input[type="file"]{display:none}
           <select onchange="loadFirms()" id="f-geo"><option value="">All geographies</option><option value="1">Tier 1 — whitespace</option><option value="2">Tier 2 — SEIA present</option><option value="3">Tier 3 — secondary</option></select>
         </div>
 
+        <div class="filter-row" style="margin-top:-6px">
+          <select onchange="onStateChange()" id="f-state" style="min-width:140px"><option value="">All states</option></select>
+          <select onchange="loadFirms()" id="f-city" style="min-width:160px"><option value="">All cities</option></select>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;color:var(--text3)">AUM</span>
+            <input type="number" id="f-aum-min" placeholder="Min $M" oninput="debounceLoad()" style="width:80px;height:28px;font-size:12px;padding:5px 8px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text)">
+            <span style="font-size:11px;color:var(--text3)">—</span>
+            <input type="number" id="f-aum-max" placeholder="Max $M" oninput="debounceLoad()" style="width:80px;height:28px;font-size:12px;padding:5px 8px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text)">
+          </div>
+          <button class="btn btn-sm" onclick="clearAllFilters()" style="color:var(--text3)">Clear filters</button>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
